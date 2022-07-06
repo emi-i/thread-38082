@@ -1,6 +1,6 @@
 class LineBotsController < ApplicationController
   protect_from_forgery except: [:callback]
-  
+
   def callback
     body = request.body.read
     signature = request.env['HTTP_X_LINE_SIGNATURE']
@@ -14,11 +14,21 @@ class LineBotsController < ApplicationController
         case event.type
         when Line::Bot::Event::MessageType::Text
           message = {
-            type: 'text',
-            text: event.message['text']
+            type: 'flex',
+            altText: '初めまして',
+            contents: account_create_message(event)
           }
           client.reply_message(event['replyToken'], message)
         end
+      end
+      case event
+      when Line::Bot::Event::Follow
+        message = {
+          type: 'flex',
+          altText: '初めまして',
+          contents: account_create_message(event)
+        }
+        client.reply_message(event['replyToken'], message)
       end
     end
     head :ok
@@ -30,6 +40,31 @@ class LineBotsController < ApplicationController
       @client ||= Line::Bot::Client.new { |config|
         config.channel_secret = ENV['LINE_CHANNEL_SECRET']
         config.channel_token = ENV['LINE_CHANNEL_TOKEN']
+      }
+    end
+    
+    def account_create_message(event)
+      {
+        type: "bubble",
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "下記のURLをクリックしてユーザー登録をしてください😀",
+              wrap: true
+            },
+            {
+              type: "button",
+              action: {
+                type: "uri",
+                label: "こちらです",
+                uri:  "https://c44b-18-183-76-10.jp.ngrok.io/users/sign_up?linkToken=" + event['replyToken']
+              }
+            }
+          ]
+        }
       }
     end
 end
